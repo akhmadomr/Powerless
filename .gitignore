@@ -1,0 +1,15 @@
+# Temporary files
+Temp/
+Library/
+Logs/
+Obj/
+
+# Build artifacts
+Build/
+Builds/
+
+# User-specific settings
+UserSettings/
+
+# Crash reports
+*.stacktrace
