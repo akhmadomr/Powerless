@@ -13,10 +13,15 @@ namespace Powerless.UI
         public CardSelectionManager selectionManager;
         private Card card;
         private Image buttonImage;
+        [SerializeField] private Sprite defaultSprite; // Add this for default sprite
 
         private void Awake()
         {
             buttonImage = GetComponent<Image>();
+            if (buttonImage != null && defaultSprite != null)
+            {
+                buttonImage.sprite = defaultSprite;
+            }
         }
 
         public void SetCard(Card newCard)
@@ -29,6 +34,7 @@ namespace Powerless.UI
                 if (cardImage != null)
                 {
                     buttonImage.sprite = cardImage.sprite;
+                    buttonImage.color = Color.white; // Full opacity
                     Debug.Log($"Set card {cardIndex} image to {card.GetCardType()}");
                 }
             }
@@ -42,7 +48,8 @@ namespace Powerless.UI
                 card = null;
                 if (buttonImage != null)
                 {
-                    buttonImage.sprite = null;
+                    buttonImage.sprite = defaultSprite; // Use default sprite instead of null
+                    buttonImage.color = Color.white; // Reset to full opacity
                 }
             }
         }

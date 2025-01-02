@@ -11,7 +11,7 @@ public class CardSelectionManager : MonoBehaviour
 {
     public Button[] cardButtons;
     public Image[] battleSlots;
-    public Sprite emptySlotSprite;
+    [SerializeField] public Sprite emptySlotSprite; // Make it public and serializable
     
     public List<int> selectedSlots = new List<int>();
     public Dictionary<int, int> slotToCardIndex = new Dictionary<int, int>();
