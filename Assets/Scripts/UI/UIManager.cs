@@ -49,13 +49,11 @@ namespace Powerless.UI
             if (scoreText != null)
             {
                 scoreText.text = $"{score}";
-                Debug.Log($"Updated score display: {score}");
             }
         }
         
         private void OnGoButtonClicked()
         {
-            Debug.Log("Go Button Clicked - Starting Battle!");
             goButton.interactable = false;
             gameManager.StartBattle();
         }
@@ -65,7 +63,6 @@ namespace Powerless.UI
             if (goButton != null)
             {
                 goButton.interactable = true;
-                Debug.Log("GO button re-enabled");
             }
         }
     }

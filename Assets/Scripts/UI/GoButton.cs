@@ -24,7 +24,6 @@ namespace Powerless.UI
 
         private void OnClick()
         {
-            Debug.Log("Go Button clicked!");
             button.interactable = false;
             gameManager.StartBattle();
         }

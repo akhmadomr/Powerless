@@ -115,16 +115,12 @@ public class CardSelectionManager : MonoBehaviour
 
     public void OnCardSelected(int cardIndex)
     {
-        Debug.Log($"OnCardSelected called with index: {cardIndex}");
-
         CardButton cardButton = cardButtons[cardIndex].GetComponent<CardButton>();
         if (cardButton == null || cardButton.GetCard() == null)
         {
-            Debug.LogError($"No valid card found on button {cardIndex}");
             return;
         }
 
-        // Find first empty battle slot
         int emptySlotIndex = -1;
         for (int i = 0; i < battleSlots.Length; i++)
         {
@@ -138,10 +134,6 @@ public class CardSelectionManager : MonoBehaviour
         if (emptySlotIndex != -1)
         {
             MoveCardToSlot(cardIndex, emptySlotIndex);
-        }
-        else
-        {
-            Debug.Log("No empty battle slots available!");
         }
     }
 
@@ -161,21 +153,12 @@ public class CardSelectionManager : MonoBehaviour
         
         if (card != null)
         {
-            // Store card reference in dictionary before clearing it from button
-            selectedCards[slotIndex] = card; // Add this line
-            
-            // Move sprite to battle slot
+            selectedCards[slotIndex] = card;
             battleSlots[slotIndex].sprite = cardButtons[cardIndex].GetComponent<Image>().sprite;
-            
-            // Track the movement
             selectedSlots.Add(slotIndex);
             slotToCardIndex[slotIndex] = cardIndex;
-            
-            // Clear the card from button
             cardButton.ClearCard();
             cardButtons[cardIndex].interactable = false;
-            
-            Debug.Log($"Moved card {card.GetCardType()} from button {cardIndex} to slot {slotIndex}");
         }
     }
 
@@ -184,23 +167,16 @@ public class CardSelectionManager : MonoBehaviour
         if (slotToCardIndex.TryGetValue(slotIndex, out int cardIndex))
         {
             CardButton cardButton = cardButtons[cardIndex].GetComponent<CardButton>();
-            Card slotCard = selectedCards[slotIndex]; // Get from stored reference
+            Card slotCard = selectedCards[slotIndex];
             
             if (slotCard != null)
             {
-                // Return card to button
                 cardButton.SetCard(slotCard);
                 cardButtons[cardIndex].interactable = true;
-                
-                // Clear battle slot
                 battleSlots[slotIndex].sprite = emptySlotSprite;
-                
-                // Clear tracking
                 selectedSlots.Remove(slotIndex);
                 slotToCardIndex.Remove(slotIndex);
-                selectedCards.Remove(slotIndex); // Add this line
-                
-                Debug.Log($"Returned card {slotCard.GetCardType()} from slot {slotIndex} to button {cardIndex}");
+                selectedCards.Remove(slotIndex);
             }
         }
     }
@@ -303,30 +279,18 @@ public class CardSelectionManager : MonoBehaviour
 
     public void ClearSlot(int slotIndex, bool reenableButton = true)
     {
-        Debug.Log($"Attempting to clear slot {slotIndex}");
-        
         if (slotToCardIndex.ContainsKey(slotIndex))
         {
             int cardIndex = slotToCardIndex[slotIndex];
             
-            // Only re-enable button if specified
             if (reenableButton)
             {
                 cardButtons[cardIndex].interactable = true;
             }
             
-            // Reset battle slot sprite
             battleSlots[slotIndex].sprite = emptySlotSprite;
-            
-            // Clear tracking
             slotToCardIndex.Remove(slotIndex);
             selectedSlots.Remove(slotIndex);
-            
-            Debug.Log($"Successfully cleared slot {slotIndex}");
-        }
-        else
-        {
-            Debug.Log($"No card found in slot {slotIndex}");
         }
     }
 
