@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;  // Add this line
 using Powerless.Core;
 using Powerless.UI;
 
@@ -254,24 +255,42 @@ public class GameManager : MonoBehaviour
         int roundScore = 0;
         Debug.Log($"=== Battle Results - Round {currentRound} ===");
 
+        // Check if player has a reverse card before battle
+        bool hasReverseCard = CheckForReverseCard();
+        
+        // Store original cards before potential swap
+        Card[] originalPlayerCards = new Card[3];
+        Card[] originalComputerCards = new Card[3];
+        
+        // Copy original cards
         for (int i = 0; i < 3; i++)
         {
-            Card playerCard = cardSelectionManager.GetCardInSlot(i);
-            Card computerCard = computerCards[i];
+            originalPlayerCards[i] = cardSelectionManager.GetCardInSlot(i);
+            originalComputerCards[i] = computerCards[i];
+        }
+
+        // If reverse card is present, swap the cards
+        if (hasReverseCard)
+        {
+            Debug.Log("Reverse card detected - Swapping player and computer cards!");
+            SwapBattleCards(originalPlayerCards, originalComputerCards);
+            // Remove the reverse card after use
+            RemoveReverseCard();
+        }
+
+        // Calculate scores using the potentially swapped cards
+        for (int i = 0; i < 3; i++)
+        {
+            Card playerCard = hasReverseCard ? originalComputerCards[i] : originalPlayerCards[i];
+            Card computerCard = hasReverseCard ? originalPlayerCards[i] : originalComputerCards[i];
             
             if (playerCard != null && computerCard != null)
             {
-                bool isReversed = cardSelectionManager.HasReverseCard(i);
-                int slotScore = battleSystem.CalculateScore(playerCard, computerCard, isReversed);
+                int slotScore = battleSystem.CalculateScore(playerCard, computerCard);
                 roundScore += slotScore;
                 
                 string result = slotScore == 3 ? "WIN" : (slotScore == 1 ? "DRAW" : "LOSE");
-                string reversedText = isReversed ? " (Reversed)" : "";
-                Debug.Log($"Slot {i}: {playerCard.GetCardType()} vs {computerCard.GetCardType()} = {result} ({slotScore} points){reversedText}");
-            }
-            else
-            {
-                Debug.LogError($"Missing card in slot {i}. Player card: {playerCard != null}, Computer card: {computerCard != null}");
+                Debug.Log($"Slot {i}: {playerCard.GetCardType()} vs {computerCard.GetCardType()} = {result} ({slotScore} points)");
             }
         }
 
@@ -280,6 +299,16 @@ public class GameManager : MonoBehaviour
         Debug.Log($"Total Score: {totalScore}");
         
         uiManager.UpdateScore(totalScore);
+
+        // After round calculations, check empty slots
+        int emptySlots = CountEmptySlots();
+        if (emptySlots > 7)
+        {
+            Debug.Log($"Empty slots ({emptySlots}) exceeded 7, waiting 3 seconds before returning to main menu");
+            yield return new WaitForSeconds(3f);
+            SceneManager.LoadScene("MainMenu");
+            yield break;
+        }
 
         // Award special card if round score is high enough
         if (roundScore >= 7)
@@ -313,6 +342,96 @@ public class GameManager : MonoBehaviour
             EndGame();
         }
     }
+
+    private int CountEmptySlots()
+    {
+        int emptyCount = 0;
+        
+        // Count empty card buttons
+        CardButton[] buttons = FindObjectsOfType<CardButton>();
+        foreach (CardButton button in buttons)
+        {
+            if (button.GetCard() == null)
+            {
+                emptyCount++;
+            }
+        }
+        
+        // Count empty battle slots
+        foreach (var slot in cardSelectionManager.battleSlots)
+        {
+            if (slot.sprite == cardSelectionManager.emptySlotSprite)
+            {
+                emptyCount++;
+            }
+        }
+        
+        Debug.Log($"Total empty slots counted: {emptyCount}");
+        return emptyCount;
+    }
+
+    private bool CheckForReverseCard()
+    {
+        CardButton[] buttons = FindObjectsOfType<CardButton>();
+        foreach (CardButton button in buttons)
+        {
+            Card card = button.GetCard();
+            if (card != null && card.GetCardType() == Card.CardType.Reverse)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void SwapBattleCards(Card[] playerCards, Card[] computerCards)
+    {
+        // Temporarily store the visual state
+        Sprite[] playerSlotSprites = new Sprite[3];
+        Sprite[] computerSlotSprites = new Sprite[3];
+
+        // Store original sprites
+        for (int i = 0; i < 3; i++)
+        {
+            if (cardSelectionManager.battleSlots[i] != null)
+                playerSlotSprites[i] = cardSelectionManager.battleSlots[i].sprite;
+            if (computerBattleSlots[i] != null)
+                computerSlotSprites[i] = computerBattleSlots[i].sprite;
+        }
+
+        // Swap visual representations
+        for (int i = 0; i < 3; i++)
+        {
+            if (cardSelectionManager.battleSlots[i] != null && computerBattleSlots[i] != null)
+            {
+                cardSelectionManager.battleSlots[i].sprite = computerSlotSprites[i];
+                computerBattleSlots[i].sprite = playerSlotSprites[i];
+            }
+        }
+
+        // Swap the actual card references
+        for (int i = 0; i < 3; i++)
+        {
+            Card temp = playerCards[i];
+            playerCards[i] = computerCards[i];
+            computerCards[i] = temp;
+        }
+    }
+
+    private void RemoveReverseCard()
+    {
+        CardButton[] buttons = FindObjectsOfType<CardButton>();
+        foreach (CardButton button in buttons)
+        {
+            Card card = button.GetCard();
+            if (card != null && card.GetCardType() == Card.CardType.Reverse)
+            {
+                button.ClearCard();
+                break;
+            }
+        }
+    }
+
      private void GenerateComputerCards()
     {
         Debug.Log($"=== Generating Computer Cards for Round {currentRound} ===");
@@ -322,34 +441,45 @@ public class GameManager : MonoBehaviour
         ClearComputerSlots();
         computerCards = new Card[3];
 
-        // Define card range based on round
-        int minIndex = 0;  // Always start with Rock
+        // Define max index based on round
         int maxIndex;      // Max index depends on round
         
         switch (currentRound)
         {
             case 1:
-                maxIndex = 3;  // Rock, Paper, Scissors only (0-2)
+                maxIndex = 3;  // Rock(0), Paper(1), Scissors(2) only
                 Debug.Log("Round 1: Basic cards only (Rock, Paper, Scissors)");
                 break;
             case 2:
-                maxIndex = 4;  // Add Fire only (0-3)
+                maxIndex = 4;  // Include Fire(3)
                 Debug.Log("Round 2: Basic cards + Fire");
                 break;
             case 3:
-                maxIndex = 5;  // Add Water (0-4)
-                Debug.Log("Round 3: All cards except Reverse");
+                maxIndex = 5;  // Include Water(4)
+                Debug.Log("Round 3: Basic cards + Fire + Water");
                 break;
             default:
-                maxIndex = 2;
+                maxIndex = 3;  // Fallback to basic cards
                 break;
         }
 
-        for (int i = 0; i < computerBattleSlots.Length; i++)
+        // Generate cards for each slot
+        for (int i = 0; i < 3; i++)
         {
             if (computerBattleSlots[i] == null) continue;
 
-            int randomIndex = Random.Range(minIndex, maxIndex);
+            int randomIndex;
+            if (currentRound == 1)
+            {
+                // First round: Only basic cards (0-2)
+                randomIndex = Random.Range(0, 3);
+            }
+            else 
+            {
+                // Later rounds: Include special cards but never Reverse(5)
+                randomIndex = Random.Range(0, maxIndex);
+            }
+
             GameObject cardPrefab = deckManager.GetCardPrefab(randomIndex);
             if (cardPrefab == null) continue;
 
